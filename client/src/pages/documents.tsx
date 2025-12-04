@@ -1,0 +1,203 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  FileText, 
+  Search, 
+  Upload,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Filter,
+} from "lucide-react";
+import type { Document } from "@shared/schema";
+import { format } from "date-fns";
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case "completed":
+      return <Badge variant="secondary" className="bg-chart-2/10 text-chart-2 border-0">Completed</Badge>;
+    case "processing":
+      return (
+        <Badge variant="secondary" className="bg-chart-4/10 text-chart-4 border-0">
+          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          Processing
+        </Badge>
+      );
+    case "error":
+      return <Badge variant="destructive">Error</Badge>;
+    default:
+      return <Badge variant="secondary">Pending</Badge>;
+  }
+}
+
+function getStatusIcon(status: string) {
+  switch (status) {
+    case "completed":
+      return <CheckCircle2 className="w-5 h-5 text-chart-2" />;
+    case "processing":
+      return <Loader2 className="w-5 h-5 text-chart-4 animate-spin" />;
+    case "error":
+      return <AlertCircle className="w-5 h-5 text-destructive" />;
+    default:
+      return <Clock className="w-5 h-5 text-muted-foreground" />;
+  }
+}
+
+export default function Documents() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const { data: documents, isLoading } = useQuery<Document[]>({
+    queryKey: ["/api/documents"],
+  });
+
+  const filteredDocuments = documents?.filter(doc => {
+    const matchesSearch = doc.originalName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold" data-testid="text-documents-title">Documents</h1>
+          <p className="text-muted-foreground mt-1">
+            Browse and manage your uploaded documents
+          </p>
+        </div>
+        <Link href="/upload">
+          <Button data-testid="button-upload-document">
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Document
+          </Button>
+        </Link>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search documents..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-documents"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-40" data-testid="select-status-filter">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="error">Error</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                  <Skeleton className="w-12 h-12 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-64" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              ))}
+            </div>
+          ) : filteredDocuments && filteredDocuments.length > 0 ? (
+            <div className="space-y-3">
+              {filteredDocuments.map((doc) => (
+                <Link key={doc.id} href={`/documents/${doc.id}`}>
+                  <div 
+                    className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 hover-elevate cursor-pointer transition-all"
+                    data-testid={`document-row-${doc.id}`}
+                  >
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium truncate">{doc.originalName}</p>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{formatFileSize(doc.fileSize)}</span>
+                        {doc.pageCount && (
+                          <span>{doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}</span>
+                        )}
+                        <span>
+                          {doc.uploadDate && format(new Date(doc.uploadDate), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      {getStatusBadge(doc.status)}
+                      {getStatusIcon(doc.status)}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium mb-2">
+                {searchQuery || statusFilter !== "all" 
+                  ? "No documents found" 
+                  : "No documents yet"
+                }
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+                {searchQuery || statusFilter !== "all"
+                  ? "Try adjusting your search or filter criteria"
+                  : "Upload your first PDF to start extracting text and analyzing content"
+                }
+              </p>
+              {!searchQuery && statusFilter === "all" && (
+                <Link href="/upload">
+                  <Button size="sm">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Document
+                  </Button>
+                </Link>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
