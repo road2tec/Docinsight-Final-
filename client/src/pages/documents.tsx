@@ -1,12 +1,22 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -23,9 +33,12 @@ import {
   AlertCircle,
   Loader2,
   Filter,
+  MessageCircle,
+  Trash2,
 } from "lucide-react";
 import type { Document } from "@shared/schema";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -58,26 +71,114 @@ function getStatusIcon(status: string) {
   }
 }
 
+function DocumentRow({ doc, openDeleteDialog }: { doc: Document, openDeleteDialog: (doc: Document) => void }) {
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+  
+  return (
+    <Link href={`/documents/${doc.id}`} className="block">
+      <div
+        key={doc.id}
+        className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg bg-muted/50 transition-all hover:bg-muted cursor-pointer"
+        data-testid={`document-row-${doc.id}`}
+      >
+        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <FileText className="w-6 h-6 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium truncate mb-1">{doc.originalName}</p>
+          <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span>{formatFileSize(doc.fileSize)}</span>
+            {doc.pageCount && (
+              <span>{doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}</span>
+            )}
+            <span>
+              {doc.uploadDate && format(new Date(doc.uploadDate), "MMM d, yyyy")}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0 w-full sm:w-auto">
+          <div className="flex-1 sm:flex-none">
+            {doc.status === 'processing' && doc.processingProgress ? (
+              <div className="flex items-center gap-2">
+                <Progress value={doc.processingProgress} className="w-24 h-2" />
+                <span className="text-xs text-muted-foreground">{doc.processingProgress}%</span>
+              </div>
+            ) : getStatusBadge(doc.status)}
+          </div>
+          {getStatusIcon(doc.status)}
+          {doc.status === 'completed' && (
+            <Link href={`/chat/${(doc as any)._id}`} onClick={(e) => e.stopPropagation()}>
+              <Button variant="outline" size="sm">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Chat
+              </Button>
+            </Link>
+          )}
+          <Button 
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openDeleteDialog(doc);
+            }}
+          >
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function Documents() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
+
+  const queryClient = useQueryClient();
 
   const { data: documents, isLoading } = useQuery<Document[]>({
     queryKey: ["/api/documents"],
-    refetchInterval: 5000, // Refetch every 5 seconds
+    refetchInterval: 5000,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => fetch(`/api/documents/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      toast.success("Document deleted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to delete document");
+    },
+    onSettled: () => {
+      setIsDeleteDialogOpen(false);
+      setDocumentToDelete(null);
+    }
+  });
+
+  const openDeleteDialog = (doc: Document) => {
+    setDocumentToDelete(doc);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (documentToDelete) {
+      deleteMutation.mutate(documentToDelete.id);
+    }
+  };
 
   const filteredDocuments = documents?.filter(doc => {
     const matchesSearch = doc.originalName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
     return matchesSearch && matchesStatus;
   }).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  };
 
   return (
     <div className="space-y-8">
@@ -141,39 +242,7 @@ export default function Documents() {
           ) : filteredDocuments && filteredDocuments.length > 0 ? (
             <div className="space-y-3">
               {filteredDocuments.map((doc) => (
-                <Link key={doc.id} href={`/documents/${doc.id}`}>
-                  <div 
-                    className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg bg-muted/50 hover-elevate cursor-pointer transition-all"
-                    data-testid={`document-row-${doc.id}`}
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate mb-1">{doc.originalName}</p>
-                      <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                        <span>{formatFileSize(doc.fileSize)}</span>
-                        {doc.pageCount && (
-                          <span>{doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}</span>
-                        )}
-                        <span>
-                          {doc.uploadDate && format(new Date(doc.uploadDate), "MMM d, yyyy")}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0 w-full sm:w-auto">
-                      <div className="flex-1 sm:flex-none">
-                        {doc.status === 'processing' && doc.processingProgress ? (
-                          <div className="flex items-center gap-2">
-                            <Progress value={doc.processingProgress} className="w-24 h-2" />
-                            <span className="text-xs text-muted-foreground">{doc.processingProgress}%</span>
-                          </div>
-                        ) : getStatusBadge(doc.status)}
-                      </div>
-                      {getStatusIcon(doc.status)}
-                    </div>
-                  </div>
-                </Link>
+                <DocumentRow key={doc.id} doc={doc} openDeleteDialog={openDeleteDialog} />
               ))}
             </div>
           ) : (
@@ -205,6 +274,28 @@ export default function Documents() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the document
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

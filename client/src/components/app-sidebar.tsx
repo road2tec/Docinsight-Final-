@@ -49,7 +49,7 @@ const navigationItems = [
   },
   {
     title: "Chat",
-    url: "/chat",
+    url: "/documents",
     icon: MessageSquare,
   },
   {

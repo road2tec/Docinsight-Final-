@@ -1,54 +1,41 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  PieChart, 
-  Pie, 
-  Cell,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
+  Chart as ChartJS, 
+  CategoryScale, 
+  LinearScale, 
+  BarElement, 
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title, 
+  Tooltip, 
+  Legend 
+} from 'chart.js';
+import { Bar, Line, Pie } from 'react-chartjs-2';
 import { 
   FileText, 
   Brain,
-  Users,
-  Building,
-  MapPin,
   TrendingUp,
+  FileDown
 } from "lucide-react";
-import type { Document, Extraction, DocumentAnalysis } from "@shared/schema";
+import type { ReportsData } from "@shared/schema";
+import { exportToPdf, exportToWord } from '@/lib/exporter';
+import { useRef } from "react";
 
-interface ReportsData {
-  totalDocuments: number;
-  totalPages: number;
-  totalWords: number;
-  documentsOverTime: { date: string; count: number }[];
-  entityDistribution: { name: string; value: number }[];
-  topKeywords: { keyword: string; count: number }[];
-  statusDistribution: { status: string; count: number }[];
-}
-
-const chartColors = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-];
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 function StatCard({ 
   title, 
@@ -87,55 +74,120 @@ export default function Reports() {
     queryKey: ["/api/reports"],
   });
 
-  const chartConfig = {
-    count: {
-      label: "Count",
-      color: "hsl(var(--chart-1))",
+  const charts = {
+    documentsOverTime: useRef<ChartJS>(null),
+    entityDistribution: useRef<ChartJS>(null),
+    topKeywords: useRef<ChartJS>(null),
+    statusDistribution: useRef<ChartJS>(null),
+  }
+
+  const documentsOverTimeData = {
+    labels: reports?.documentsOverTime.map(d => d.date),
+    datasets: [
+      {
+        label: 'Documents',
+        data: reports?.documentsOverTime.map(d => d.count) || [],
+        borderColor: 'hsl(var(--primary))',
+        backgroundColor: 'hsl(var(--primary))',
+      },
+    ],
+  };
+
+  const entityDistributionData = {
+    labels: reports?.entityDistribution.map(e => e.name),
+    datasets: [
+      {
+        data: reports?.entityDistribution.map(e => e.value) || [],
+        backgroundColor: [
+          'hsl(var(--chart-1))',
+          'hsl(var(--chart-2))',
+          'hsl(var(--chart-3))',
+          'hsl(var(--chart-4))',
+          'hsl(var(--chart-5))',
+        ],
+      },
+    ],
+  };
+
+  const topKeywordsData = {
+    labels: reports?.topKeywords.slice(0, 8).map(k => k.keyword),
+    datasets: [
+      {
+        label: 'Count',
+        data: reports?.topKeywords.slice(0, 8).map(k => k.count) || [],
+        backgroundColor: 'hsl(var(--primary))',
+      },
+    ],
+  };
+
+  const statusDistributionData = {
+    labels: reports?.statusDistribution.map(s => s.status),
+    datasets: [
+      {
+        label: 'Count',
+        data: reports?.statusDistribution.map(s => s.count) || [],
+        backgroundColor: 'hsl(var(--chart-2))',
+      },
+    ],
+  };
+
+  const chartOptions = (title: string) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: title,
+      },
     },
-    documents: {
-      label: "Documents",
-      color: "hsl(var(--chart-1))",
-    },
+  });
+  
+  const handleExport = (format: 'pdf' | 'word') => {
+    if (!reports) return;
+
+    const chartInstances = {
+      documentsOverTime: charts.documentsOverTime.current,
+      entityDistribution: charts.entityDistribution.current,
+      topKeywords: charts.topKeywords.current,
+      statusDistribution: charts.statusDistribution.current,
+    };
+
+    if (format === 'pdf') {
+      exportToPdf(reports, chartInstances);
+    } else {
+      exportToWord(reports, chartInstances);
+    }
   };
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold" data-testid="text-reports-title">Reports & Analytics</h1>
-        <p className="text-muted-foreground mt-1">
-          Visual insights from your processed documents
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-semibold" data-testid="text-reports-title">Reports & Analytics</h1>
+          <p className="text-muted-foreground mt-1">
+            Visual insights from your processed documents
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => handleExport('pdf')}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
+          <Button variant="outline" onClick={() => handleExport('word')}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Export Word
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Documents"
-          value={reports?.totalDocuments?.toLocaleString() ?? 0}
-          icon={FileText}
-          loading={isLoading}
-        />
-        <StatCard
-          title="Total Pages"
-          value={reports?.totalPages?.toLocaleString() ?? 0}
-          icon={Brain}
-          loading={isLoading}
-        />
-        <StatCard
-          title="Total Words"
-          value={reports?.totalWords?.toLocaleString() ?? 0}
-          icon={TrendingUp}
-          loading={isLoading}
-        />
-        <StatCard
-          title="Avg Words/Doc"
-          value={
-            reports?.totalDocuments && reports?.totalWords
-              ? Math.round(reports.totalWords / reports.totalDocuments).toLocaleString()
-              : 0
-          }
-          icon={FileText}
-          loading={isLoading}
-        />
+        <StatCard title="Total Documents" value={reports?.totalDocuments?.toLocaleString() ?? 0} icon={FileText} loading={isLoading} />
+        <StatCard title="Total Pages" value={reports?.totalPages?.toLocaleString() ?? 0} icon={Brain} loading={isLoading} />
+        <StatCard title="Total Words" value={reports?.totalWords?.toLocaleString() ?? 0} icon={TrendingUp} loading={isLoading} />
+        <StatCard title="Avg Words/Doc" value={reports?.totalDocuments && reports?.totalWords ? Math.round(reports.totalWords / reports.totalDocuments).toLocaleString() : 0} icon={FileText} loading={isLoading} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -143,45 +195,8 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="text-lg font-medium">Documents Over Time</CardTitle>
           </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : reports?.documentsOverTime && reports.documentsOverTime.length > 0 ? (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={reports.documentsOverTime}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis 
-                      dataKey="date" 
-                      className="text-xs" 
-                      tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    />
-                    <YAxis 
-                      className="text-xs" 
-                      tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--popover))", 
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="count" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
-                      dot={{ fill: "hsl(var(--primary))" }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                No data available
-              </div>
-            )}
+          <CardContent className="h-64">
+            {isLoading ? <Skeleton className="h-full w-full" /> : <Line ref={charts.documentsOverTime} options={chartOptions('Documents Over Time')} data={documentsOverTimeData} />}
           </CardContent>
         </Card>
 
@@ -189,44 +204,8 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="text-lg font-medium">Entity Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : reports?.entityDistribution && reports.entityDistribution.length > 0 ? (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={reports.entityDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                      outerRadius={80}
-                      dataKey="value"
-                    >
-                      {reports.entityDistribution.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={chartColors[index % chartColors.length]} 
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--popover))", 
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                No entities found
-              </div>
-            )}
+          <CardContent className="h-64">
+            {isLoading ? <Skeleton className="h-full w-full" /> : <Pie ref={charts.entityDistribution} options={chartOptions('Entity Distribution')} data={entityDistributionData} />}
           </CardContent>
         </Card>
       </div>
@@ -236,46 +215,8 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="text-lg font-medium">Top Keywords</CardTitle>
           </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : reports?.topKeywords && reports.topKeywords.length > 0 ? (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={reports.topKeywords.slice(0, 8)} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                    <XAxis 
-                      type="number" 
-                      className="text-xs" 
-                      tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    />
-                    <YAxis 
-                      dataKey="keyword" 
-                      type="category" 
-                      width={100}
-                      className="text-xs" 
-                      tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--popover))", 
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar 
-                      dataKey="count" 
-                      fill="hsl(var(--primary))" 
-                      radius={[0, 4, 4, 0]} 
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                No keywords found
-              </div>
-            )}
+          <CardContent className="h-64">
+            {isLoading ? <Skeleton className="h-full w-full" /> : <Bar ref={charts.topKeywords} options={{ ...chartOptions('Top Keywords'), indexAxis: 'y' as const }} data={topKeywordsData} />}
           </CardContent>
         </Card>
 
@@ -283,43 +224,8 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="text-lg font-medium">Document Status</CardTitle>
           </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : reports?.statusDistribution && reports.statusDistribution.length > 0 ? (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={reports.statusDistribution}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis 
-                      dataKey="status" 
-                      className="text-xs capitalize" 
-                      tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    />
-                    <YAxis 
-                      className="text-xs" 
-                      tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--popover))", 
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar 
-                      dataKey="count" 
-                      fill="hsl(var(--chart-2))" 
-                      radius={[4, 4, 0, 0]} 
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                No documents yet
-              </div>
-            )}
+          <CardContent className="h-64">
+            {isLoading ? <Skeleton className="h-full w-full" /> : <Bar ref={charts.statusDistribution} options={chartOptions('Document Status')} data={statusDistributionData} />}
           </CardContent>
         </Card>
       </div>

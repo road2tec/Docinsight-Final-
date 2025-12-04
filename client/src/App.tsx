@@ -81,7 +81,7 @@ function Router() {
         <Route path="/upload" component={Upload} />
         <Route path="/documents" component={Documents} />
         <Route path="/documents/:id" component={DocumentViewer} />
-        <Route path="/chat" component={Chat} />
+        <Route path="/chat/:id" component={Chat} />
         <Route path="/reports" component={Reports} />
         <Route component={NotFound} />
       </Switch>

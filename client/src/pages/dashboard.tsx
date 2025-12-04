@@ -212,7 +212,7 @@ export default function Dashboard() {
                 Upload New Document
               </Button>
             </Link>
-            <Link href="/chat">
+            <Link href="/documents">
               <Button variant="outline" className="w-full justify-start" data-testid="quick-action-chat">
                 <MessageSquare className="w-4 h-4 mr-3" />
                 Ask Questions
