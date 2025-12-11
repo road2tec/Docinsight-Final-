@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,11 @@ import {
   MapPin,
   Calendar,
   Banknote,
+  RefreshCw,
 } from "lucide-react";
 import type { Document, Extraction, DocumentAnalysis, ExtractedEntity, ExtractedTable } from "@shared/mongo-schema";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -91,10 +93,28 @@ interface DocumentWithExtraction extends Document {
 
 export default function DocumentViewer() {
   const params = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
 
   const { data: document, isLoading } = useQuery<DocumentWithExtraction>({
     queryKey: ["/api/documents", params.id],
     enabled: !!params.id,
+  });
+
+  const reprocessMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/documents/${params.id}/reprocess`, {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("Failed to reprocess document");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success("Document reprocessing started");
+      queryClient.invalidateQueries({ queryKey: ["/api/documents", params.id] });
+    },
+    onError: () => {
+      toast.error("Failed to reprocess document");
+    },
   });
 
   const formatFileSize = (bytes: number) => {
@@ -176,6 +196,14 @@ export default function DocumentViewer() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => reprocessMutation.mutate()}
+            disabled={reprocessMutation.isPending || document.status === "processing"}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${reprocessMutation.isPending ? "animate-spin" : ""}`} />
+            Reprocess
+          </Button>
           <Link href={`/chat?document=${document.id}`}>
             <Button variant="outline" data-testid="button-ask-questions">
               <MessageSquare className="w-4 h-4 mr-2" />
@@ -237,9 +265,14 @@ export default function DocumentViewer() {
 
               <TabsContent value="entities" className="mt-0">
                 <ScrollArea className="h-[500px] p-6">
-                  {analysis?.entities ? (
-                    <div className="space-y-4">
-                      {[
+                  {document.status === "processing" ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+                      <p className="text-muted-foreground">Processing document...</p>
+                    </div>
+                  ) : analysis?.entities ? (
+                    (() => {
+                      const entitySections = [
                         { key: 'persons', label: 'person', icon: 'person' },
                         { key: 'organizations', label: 'organization', icon: 'organization' },
                         { key: 'locations', label: 'location', icon: 'location' },
@@ -270,8 +303,20 @@ export default function DocumentViewer() {
                             </div>
                           </div>
                         );
-                      })}
-                    </div>
+                      }).filter(Boolean);
+
+                      return entitySections.length > 0 ? (
+                        <div className="space-y-4">{entitySections}</div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <User className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
+                          <p className="text-muted-foreground">No entities found in this document</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Try uploading a document with names, organizations, locations, dates, or contact information
+                          </p>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="text-center py-12">
                       <User className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
@@ -283,11 +328,23 @@ export default function DocumentViewer() {
 
               <TabsContent value="tables" className="mt-0">
                 <ScrollArea className="h-[500px] p-6">
-                  {tables && tables.length > 0 ? (
+                  {document.status === "processing" ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+                      <p className="text-muted-foreground">Processing document...</p>
+                    </div>
+                  ) : tables && tables.length > 0 ? (
                     <div className="space-y-6">
                       {tables.map((table, tableIndex) => (
                         <div key={tableIndex}>
-                          <h4 className="text-sm font-medium mb-3">Table {tableIndex + 1}</h4>
+                          <h4 className="text-sm font-medium mb-3">
+                            Table {tableIndex + 1}
+                            {table.confidence && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                ({Math.round(table.confidence * 100)}% confidence)
+                              </span>
+                            )}
+                          </h4>
                           <div className="border rounded-lg overflow-hidden">
                             <Table>
                               <TableHeader>
@@ -317,6 +374,9 @@ export default function DocumentViewer() {
                     <div className="text-center py-12">
                       <FileText className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
                       <p className="text-muted-foreground">No tables found in this document</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Try uploading a document with tabular data or structured information
+                      </p>
                     </div>
                   )}
                 </ScrollArea>
@@ -394,18 +454,20 @@ export default function DocumentViewer() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Words</span>
                     <span className="text-sm font-medium">
-                      {analysis.wordCount?.toLocaleString() || 0}
+                      {analysis.statistics?.wordCount?.toLocaleString() || 0}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Characters</span>
                     <span className="text-sm font-medium">
-                      {analysis.characterCount?.toLocaleString() || 0}
+                      {analysis.statistics?.charCount?.toLocaleString() || 0}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Entities</span>
-                    <span className="text-sm font-medium">{analysis.entities?.length || 0}</span>
+                    <span className="text-sm font-medium">
+                      {analysis.entities ? Object.values(analysis.entities).flat().length : 0}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Tables</span>

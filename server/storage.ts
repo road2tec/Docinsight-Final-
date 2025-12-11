@@ -25,6 +25,7 @@ export interface IStorage {
   getExtractions(documentId: string): Promise<Extraction[]>;
   getExtraction(documentId: string, extractionType: string): Promise<Extraction | null>;
   updateExtraction(id: string, data: any): Promise<Extraction | null>;
+  deleteExtraction(id: string): Promise<void>;
 
   // Chat operations
   getChatMessages(documentId: string): Promise<ChatMessage[]>;
@@ -182,6 +183,10 @@ export class MongoStorage implements IStorage {
       { returnDocument: 'after' }
     );
     return result;
+  }
+
+  async deleteExtraction(id: string): Promise<void> {
+    await this.extractions.deleteOne({ _id: new ObjectId(id) as any });
   }
 
   // Chat operations

@@ -182,6 +182,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  app.post(
+    "/api/documents/:id/reprocess",
+    isAuthenticated,
+    async (req: any, res: Response) => {
+      try {
+        const doc = await storage.getDocument(req.params.id);
+        if (!doc) {
+          return res.status(404).json({ message: "Document not found" });
+        }
+
+        if (doc.userId !== req.user.claims.sub) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+
+        const filePath = path.join(uploadDir, doc.filename);
+        if (!fs.existsSync(filePath)) {
+          return res.status(404).json({ message: "Document file not found" });
+        }
+
+        // Delete existing extractions
+        const extractions = await storage.getExtractions(req.params.id);
+        for (const extraction of extractions) {
+          await storage.deleteExtraction((extraction as any)._id);
+        }
+
+        // Restart processing
+        processDocument(req.params.id, filePath).catch((error) => {
+          console.error(`Error reprocessing document ${req.params.id}:`, error);
+          storage.updateDocument(req.params.id, { status: "error" });
+        });
+
+        res.json({ message: "Document reprocessing started" });
+      } catch (error) {
+        console.error("Error reprocessing document:", error);
+        res.status(500).json({ message: "Failed to reprocess document" });
+      }
+    }
+  );
+
   app.delete(
     "/api/documents/:id",
     isAuthenticated,

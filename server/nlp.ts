@@ -95,6 +95,42 @@ export function extractEntities(text: string): ExtractedEntity[] {
     console.warn("Failed to extract money:", e);
   }
 
+  try {
+    // Extract email addresses using regex
+    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+    const emails = text.match(emailRegex) || [];
+    emails.forEach((email) => {
+      if (!seen.has(email.toLowerCase())) {
+        seen.add(email.toLowerCase());
+        entities.push({
+          type: "email",
+          text: email,
+          confidence: 0.95,
+        });
+      }
+    });
+  } catch (e) {
+    console.warn("Failed to extract emails:", e);
+  }
+
+  try {
+    // Extract phone numbers using regex
+    const phoneRegex = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
+    const phones = text.match(phoneRegex) || [];
+    phones.forEach((phone) => {
+      if (!seen.has(phone.toLowerCase())) {
+        seen.add(phone.toLowerCase());
+        entities.push({
+          type: "phone",
+          text: phone,
+          confidence: 0.85,
+        });
+      }
+    });
+  } catch (e) {
+    console.warn("Failed to extract phones:", e);
+  }
+
   return entities;
 }
 
@@ -144,54 +180,83 @@ export function extractTablesFromText(text: string): ExtractedTable[] {
   const tables: ExtractedTable[] = [];
   
   // Look for simple table-like patterns in text
-  // This is a basic heuristic - for advanced table extraction, specialized libraries would be needed
-  const lines = text.split("\n");
-  let currentTable: ExtractedTable | null = null;
-  let consecutiveTableRows = 0;
-
-  for (const line of lines) {
-    // Check if line looks like a table row (has multiple tabs or pipe separators)
-    const hasTabs = (line.match(/\t/g) || []).length >= 2;
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  
+  console.log('[Table Extraction] Processing lines:', lines);
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Check if line looks like a table row
+    const hasTabs = (line.match(/\t/g) || []).length >= 1;
     const hasPipes = (line.match(/\|/g) || []).length >= 2;
-    const hasMultipleSpaces = /\s{3,}/.test(line) && line.trim().length > 0;
+    const hasMultipleSpaces = /\s{2,}/.test(line);
+    
+    // Split by appropriate delimiter
+    let cells: string[] = [];
+    if (hasPipes) {
+      cells = line.split("|").map((c) => c.trim()).filter(Boolean);
+    } else if (hasTabs) {
+      cells = line.split("\t").map((c) => c.trim()).filter(Boolean);
+    } else if (hasMultipleSpaces) {
+      cells = line.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean);
+    } else {
+      // For single-space separated content, split by spaces
+      cells = line.split(/\s+/).filter(Boolean);
+    }
 
-    if (hasTabs || hasPipes || hasMultipleSpaces) {
-      const cells = hasPipes
-        ? line.split("|").map((c) => c.trim()).filter(Boolean)
-        : hasTabs
-        ? line.split("\t").map((c) => c.trim()).filter(Boolean)
-        : line.split(/\s{3,}/).map((c) => c.trim()).filter(Boolean);
+    console.log(`[Table Extraction] Line ${i}: "${line}" -> ${cells.length} cells:`, cells);
 
-      if (cells.length >= 2) {
-        consecutiveTableRows++;
-
-        if (!currentTable) {
-          currentTable = {
-            headers: cells,
-            rows: [],
-          };
-        } else if (consecutiveTableRows === 2) {
-          // First row after header
-          currentTable.rows.push(cells);
+    // If this line has multiple cells (3+ for header), check if next lines also have cells
+    if (cells.length >= 3 && i + 1 < lines.length) {
+      console.log(`[Table Extraction] Potential table header found at line ${i}`);
+      const table: ExtractedTable = {
+        headers: cells,
+        rows: [],
+        confidence: 0.7,
+      };
+      
+      // Look for data rows after the header
+      for (let j = i + 1; j < lines.length; j++) {
+        const nextLine = lines[j];
+        
+        // Try all delimiters for row
+        let rowCells: string[] = [];
+        if (hasPipes) {
+          rowCells = nextLine.split("|").map((c) => c.trim()).filter(Boolean);
+        } else if (hasTabs) {
+          rowCells = nextLine.split("\t").map((c) => c.trim()).filter(Boolean);
+        } else if (hasMultipleSpaces) {
+          rowCells = nextLine.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean);
         } else {
-          currentTable.rows.push(cells);
+          rowCells = nextLine.split(/\s+/).filter(Boolean);
+        }
+        
+        console.log(`[Table Extraction] Checking row ${j}: "${nextLine}" -> ${rowCells.length} cells:`, rowCells);
+        
+        // Add row if it has at least 2 cells (to match table structure)
+        if (rowCells.length >= 2) {
+          table.rows.push(rowCells);
+          console.log(`[Table Extraction] Added row ${j} to table`);
+        } else {
+          // No more rows - end of table
+          console.log(`[Table Extraction] End of table at line ${j}`);
+          break;
         }
       }
-    } else {
-      // End of potential table
-      if (currentTable && currentTable.rows.length > 0) {
-        tables.push(currentTable);
+      
+      // Only add table if it has at least 1 data row
+      if (table.rows.length > 0) {
+        console.log(`[Table Extraction] Table found with ${table.rows.length} rows`);
+        tables.push(table);
+        i += table.rows.length; // Skip processed lines
+      } else {
+        console.log(`[Table Extraction] No data rows found, skipping table`);
       }
-      currentTable = null;
-      consecutiveTableRows = 0;
     }
   }
 
-  // Don't forget the last table if text ends with one
-  if (currentTable && currentTable.rows.length > 0) {
-    tables.push(currentTable);
-  }
-
+  console.log(`[Table Extraction] Total tables found: ${tables.length}`);
   return tables;
 }
 
