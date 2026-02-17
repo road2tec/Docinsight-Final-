@@ -7,15 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { 
-  Upload as UploadIcon, 
-  FileText, 
-  X, 
+import {
+  Upload as UploadIcon,
+  FileText,
+  X,
   CheckCircle2,
   AlertCircle,
   Loader2,
   Cloud,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface UploadingFile {
   file: File;
@@ -31,11 +40,13 @@ export default function Upload() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [showPasswordAlert, setShowPasswordAlert] = useState(false);
+
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      
+
       const response = await fetch("/api/documents/upload", {
         method: "POST",
         body: formData,
@@ -44,7 +55,10 @@ export default function Upload() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Upload failed");
+        // Pass the error code if available, otherwise just message
+        const err = new Error(error.message || "Upload failed");
+        (err as any).code = error.code;
+        throw err;
       }
 
       return response.json();
@@ -64,20 +78,22 @@ export default function Upload() {
   });
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const pdfFiles = acceptedFiles.filter(file => 
-      file.type === "application/pdf"
+    // Basic validations
+    const validFiles = acceptedFiles.filter(file =>
+      file.type === "application/pdf" ||
+      file.type.startsWith("image/")
     );
 
-    if (pdfFiles.length === 0) {
+    if (validFiles.length === 0) {
       toast({
         title: "Invalid file type",
-        description: "Please upload PDF files only",
+        description: "Please upload PDF or Image files",
         variant: "destructive",
       });
       return;
     }
 
-    const newFiles: UploadingFile[] = pdfFiles.map(file => ({
+    const newFiles: UploadingFile[] = validFiles.map(file => ({
       file,
       progress: 0,
       status: "uploading",
@@ -85,21 +101,21 @@ export default function Upload() {
 
     setFiles(prev => [...prev, ...newFiles]);
 
-    for (let i = 0; i < pdfFiles.length; i++) {
-      const file = pdfFiles[i];
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
       const fileIndex = files.length + i;
 
       try {
-        setFiles(prev => prev.map((f, idx) => 
+        setFiles(prev => prev.map((f, idx) =>
           idx === fileIndex ? { ...f, progress: 30 } : f
         ));
 
         const result = await uploadMutation.mutateAsync(file);
 
-        setFiles(prev => prev.map((f, idx) => 
-          idx === fileIndex ? { 
-            ...f, 
-            progress: 100, 
+        setFiles(prev => prev.map((f, idx) =>
+          idx === fileIndex ? {
+            ...f,
+            progress: 100,
             status: "completed",
             documentId: result.id,
           } : f
@@ -112,14 +128,18 @@ export default function Upload() {
           title: "Upload successful",
           description: `${file.name} has been uploaded and is being processed`,
         });
-      } catch (error) {
-        setFiles(prev => prev.map((f, idx) => 
-          idx === fileIndex ? { 
-            ...f, 
+      } catch (error: any) {
+        setFiles(prev => prev.map((f, idx) =>
+          idx === fileIndex ? {
+            ...f,
             status: "error",
             error: error instanceof Error ? error.message : "Upload failed",
           } : f
         ));
+
+        if (error?.code === "PASSWORD_PROTECTED" || error?.message?.toLowerCase().includes("password")) {
+          setShowPasswordAlert(true);
+        }
       }
     }
   }, [files.length, uploadMutation, queryClient, toast]);
@@ -128,6 +148,9 @@ export default function Upload() {
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
     },
     multiple: true,
   });
@@ -143,100 +166,118 @@ export default function Upload() {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold" data-testid="text-upload-title">Upload Documents</h1>
-        <p className="text-muted-foreground mt-1">
-          Upload PDF files to extract text, analyze content, and enable AI-powered Q&A
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-700">
+      {/* Decorative Background */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none -z-10" />
+
+      <div className="text-center">
+        <h1 className="text-4xl font-bold tracking-tight text-glow mb-4" data-testid="text-upload-title">
+          Upload Documents
+        </h1>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          Upload PDF or Image files to extract text, analyze content, and enable AI-powered Q&A
         </p>
       </div>
 
-      <Card>
-        <CardContent className="p-6">
+      <Card className="glass-card border-primary/20 shadow-2xl overflow-hidden relative group">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+        <CardContent className="p-8 relative z-10">
           <div
             {...getRootProps()}
             className={`
-              relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer
-              transition-all duration-200
-              ${isDragActive 
-                ? "border-primary bg-primary/5" 
-                : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+              relative border-2 border-dashed rounded-2xl p-16 text-center cursor-pointer
+              transition-all duration-300
+              ${isDragActive
+                ? "border-primary bg-primary/10 scale-[1.02] shadow-[0_0_30px_rgba(124,58,237,0.2)]"
+                : "border-primary/20 hover:border-primary/50 hover:bg-muted/30"
               }
             `}
             data-testid="dropzone"
           >
             <input {...getInputProps()} data-testid="input-file" />
-            <div className="max-w-md mx-auto">
+            <div className="max-w-md mx-auto relative">
+              {/* Glow effect behind icon */}
+              <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/20 blur-3xl rounded-full pointer-events-none transition-opacity duration-500 ${isDragActive ? 'opacity-100' : 'opacity-0'}`} />
+
               <div className={`
-                w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center
-                ${isDragActive ? "bg-primary/20" : "bg-muted"}
+                w-24 h-24 rounded-3xl mx-auto mb-8 flex items-center justify-center relative z-10
+                transition-all duration-300
+                ${isDragActive ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted/50 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10"}
               `}>
                 {isDragActive ? (
-                  <Cloud className="w-8 h-8 text-primary" />
+                  <Cloud className="w-12 h-12 animate-bounce" />
                 ) : (
-                  <UploadIcon className="w-8 h-8 text-muted-foreground" />
+                  <UploadIcon className="w-10 h-10" />
                 )}
               </div>
-              <h3 className="text-lg font-medium mb-2">
-                {isDragActive ? "Drop your files here" : "Drag & drop PDF files"}
+              <h3 className="text-xl font-semibold mb-3">
+                {isDragActive ? "Drop files now" : "Drag & drop PDF or Image files"}
               </h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-muted-foreground mb-8">
                 or click to browse from your computer
               </p>
-              <Button variant="outline" type="button">
+              <Button variant={isDragActive ? "secondary" : "default"} size="lg" className="shadow-lg hover:scale-105 transition-transform" type="button">
                 Select Files
               </Button>
-              <p className="text-xs text-muted-foreground mt-4">
-                Maximum file size: 50MB. Supported format: PDF
-              </p>
+              <div className="flex items-center justify-center gap-6 mt-8 text-xs text-muted-foreground/60 font-medium">
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Max 50MB</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> PDF, Images</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Secure</span>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {files.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-medium">Upload Queue</CardTitle>
+        <Card className="glass-card border-primary/10 animate-in slide-in-from-bottom-4 duration-500">
+          <CardHeader className="border-b border-border/40">
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <Cloud className="w-5 h-5 text-primary" />
+              Upload Queue
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-4">
               {files.map((uploadFile, index) => (
-                <div 
+                <div
                   key={index}
-                  className="flex items-center gap-4 p-4 rounded-lg bg-muted/50"
+                  className="flex items-center gap-4 p-4 rounded-xl bg-background/40 border border-primary/5 hover:border-primary/20 transition-all shadow-sm group"
                   data-testid={`upload-item-${index}`}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-5 h-5 text-primary" />
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <FileText className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="font-medium truncate">{uploadFile.file.name}</p>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <p className="font-medium truncate text-foreground">{uploadFile.file.name}</p>
+                      <span className="text-xs text-muted-foreground flex-shrink-0 px-2 py-0.5 rounded-full bg-muted">
                         {formatFileSize(uploadFile.file.size)}
                       </span>
                     </div>
                     {uploadFile.status === "uploading" && (
-                      <div className="space-y-1">
-                        <Progress value={uploadFile.progress} className="h-1.5" />
-                        <p className="text-xs text-muted-foreground">Uploading...</p>
+                      <div className="space-y-1.5">
+                        <Progress value={uploadFile.progress} className="h-2 bg-muted" />
+                        <div className="flex justify-between text-xs">
+                          <span className="text-primary">Uploading...</span>
+                          <span className="text-muted-foreground">{uploadFile.progress}%</span>
+                        </div>
                       </div>
                     )}
                     {uploadFile.status === "processing" && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-primary font-medium animate-pulse">
                         <Loader2 className="w-3 h-3 animate-spin" />
-                        Processing document...
+                        Processing document AI...
                       </div>
                     )}
                     {uploadFile.status === "completed" && (
-                      <div className="flex items-center gap-2 text-xs text-chart-2">
+                      <div className="flex items-center gap-2 text-xs text-green-400 font-medium">
                         <CheckCircle2 className="w-3 h-3" />
-                        Uploaded successfully
+                        Uploaded & Processed
                       </div>
                     )}
                     {uploadFile.status === "error" && (
-                      <div className="flex items-center gap-2 text-xs text-destructive">
+                      <div className="flex items-center gap-2 text-xs text-red-400 font-medium">
                         <AlertCircle className="w-3 h-3" />
                         {uploadFile.error}
                       </div>
@@ -244,9 +285,10 @@ export default function Upload() {
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {uploadFile.status === "completed" && uploadFile.documentId && (
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="outline"
+                        className="hover:bg-primary/10 hover:text-primary transition-colors border-primary/20"
                         onClick={() => navigate(`/documents/${uploadFile.documentId}`)}
                       >
                         View
@@ -256,7 +298,7 @@ export default function Upload() {
                       size="icon"
                       variant="ghost"
                       onClick={() => removeFile(index)}
-                      className="text-muted-foreground"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -267,6 +309,28 @@ export default function Upload() {
           </CardContent>
         </Card>
       )}
+
+      {/* Password Protection Warning Dialog */}
+      <AlertDialog open={showPasswordAlert} onOpenChange={setShowPasswordAlert}>
+        <AlertDialogContent className="glass-card border-destructive/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-500">
+              <AlertCircle className="h-5 w-5" />
+              Password Protected File
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-muted-foreground">
+              The PDF file you are trying to upload is password protected or encrypted.
+              <br /><br />
+              <span className="text-foreground font-medium">Docinsight cannot process encrypted files</span> for security reasons. Please remove the password protection from the file and try uploading it again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowPasswordAlert(false)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Understood
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

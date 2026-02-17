@@ -11,6 +11,7 @@ export const clientPromise = client.connect();
 
 // Extract database name from URI or use default
 const dbName = process.env.MONGODB_DB_NAME || "intelligent-document-processing";
+console.log(`[DB] Attempting to connect to database: ${dbName}`);
 export const db = client.db(dbName);
 
 export async function connectToDatabase() {

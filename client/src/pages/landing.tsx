@@ -1,15 +1,22 @@
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { 
-  FileText, 
-  Brain, 
-  MessageSquare, 
-  BarChart3, 
-  Upload, 
+import {
+  FileText,
+  Brain,
+  MessageSquare,
+  BarChart3,
+  Upload,
   Search,
   Shield,
-  Zap
+  Zap,
+  CheckCircle2,
+  ArrowRight,
+  Users,
+  Target,
+  Globe,
+  Lightbulb
 } from "lucide-react";
 
 export default function Landing() {
@@ -47,117 +54,223 @@ export default function Landing() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="min-h-screen bg-transparent"> {/* Background handled by index.css body */}
+      <header className="sticky top-0 z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              <FileText className="w-5 h-5 text-primary-foreground" />
+            <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/20">
+              <FileText className="w-5 h-5 text-primary" />
             </div>
-            <span className="font-semibold text-xl">DocuMind</span>
+            <span className="font-bold text-xl tracking-tight">Docinsight</span>
           </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <a href="/api/login">
-              <Button data-testid="button-login">Sign In</Button>
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+              Features
             </a>
-          </div>
+            <a href="#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+              How it Works
+            </a>
+            <a href="#about" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+              About
+            </a>
+            <div className="flex items-center gap-4 ml-4">
+              <Link href="/auth">
+                <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/auth">
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_15px_rgba(124,58,237,0.3)]">
+                  Get Started
+                </Button>
+              </Link>
+            </div>
+          </nav>
         </div>
       </header>
 
       <main>
-        <section className="py-24 lg:py-32">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-sm font-medium mb-8">
-                <Zap className="w-4 h-4 text-primary" />
-                AI-Powered Document Processing
+        {/* Hero Section */}
+        <section className="relative pt-24 pb-32 lg:pt-36 lg:pb-40 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background pointer-events-none" />
+
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium mb-8 text-primary animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <Zap className="w-4 h-4" />
+                <span>Next-Gen Context-Aware AI</span>
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-                Transform Your Documents into{" "}
-                <span className="text-primary">Actionable Insights</span>
+
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-8 leading-tight animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
+                Transform Documents into <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400 text-glow">
+                  Intelligent Insights
+                </span>
               </h1>
-              <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-                Upload PDFs, extract text and tables, analyze content with AI, and get instant answers 
-                to your questions. The intelligent document processing platform for modern teams.
+
+              <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+                Unlock the power of your PDFs with advanced AI. Extract data, visualize trends,
+                and chat with your documents in seconds.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/api/login">
-                  <Button size="lg" className="w-full sm:w-auto" data-testid="button-get-started">
-                    Get Started Free
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-400">
+                <Link href="/auth">
+                  <Button size="lg" className="h-12 px-8 text-base bg-primary hover:bg-primary/90 shadow-[0_0_20px_rgba(124,58,237,0.4)] transition-all hover:scale-105">
+                    Start Processing Free
+                    <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
-                </a>
-                <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                  Watch Demo
-                </Button>
+                </Link>
+                <Link href="#demo">
+                  <Button variant="outline" size="lg" className="h-12 px-8 text-base border-primary/20 hover:bg-primary/5 hover:border-primary/40 backdrop-blur-sm">
+                    Watch Demo
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Stats / trust indicators */}
+              <div className="mt-16 pt-8 border-t border-border/40 grid grid-cols-2 md:grid-cols-4 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500">
+                {[
+                  { label: "Documents Processed", value: "10k+" },
+                  { label: "Entities Extracted", value: "1M+" },
+                  { label: "Accuracy Rate", value: "99.9%" },
+                  { label: "Active Users", value: "2k+" },
+                ].map((stat, i) => (
+                  <div key={i}>
+                    <div className="text-2xl font-bold text-foreground mb-1">{stat.value}</div>
+                    <div className="text-sm text-muted-foreground">{stat.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="py-20 bg-muted/30">
+        {/* Features Grid */}
+        <section id="features" className="py-24 relative">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-3xl font-semibold mb-4">Powerful Features</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
+              <h2 className="text-3xl font-bold mb-4 tracking-tight">Powerful Features</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
                 Everything you need to process, analyze, and understand your documents
               </p>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {features.map((feature, index) => (
-                <Card key={index} className="hover-elevate transition-all">
-                  <CardContent className="p-6">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <div key={index} className="glass-card rounded-xl p-1 relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <CardContent className="p-6 relative z-10">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                       <feature.icon className="w-6 h-6 text-primary" />
                     </div>
-                    <h3 className="text-lg font-medium mb-2">{feature.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
+                    <h3 className="text-xl font-semibold mb-3 text-foreground group-hover:text-primary transition-colors">
+                      {feature.title}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
                       {feature.description}
                     </p>
                   </CardContent>
-                </Card>
+                </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="py-20">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <h2 className="text-3xl font-semibold mb-6">
-                  Enterprise-Grade Security
-                </h2>
-                <p className="text-muted-foreground mb-8 leading-relaxed">
-                  Your documents are protected with industry-leading security measures. 
-                  Role-based access control, encrypted storage, and comprehensive audit logs 
-                  ensure your data stays safe.
+        {/* How it Works Section */}
+        <section id="how-it-works" className="py-24 relative bg-muted/5">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold mb-4 tracking-tight">How DocInsight Works</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+                Three simple steps to unlock the potential of your documents
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 relative">
+              {/* Connector Line */}
+              <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-primary/20 via-primary/50 to-primary/20" />
+
+              <div className="relative text-center group">
+                <div className="w-24 h-24 rounded-2xl bg-background/50 glass border border-primary/20 flex items-center justify-center mx-auto mb-6 relative z-10 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_20px_rgba(124,58,237,0.2)]">
+                  <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Upload className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">1. Upload</h3>
+                <p className="text-muted-foreground">
+                  Drag & drop your PDF documents. We securely process and encrypt them instantly.
                 </p>
+              </div>
+
+              <div className="relative text-center group">
+                <div className="w-24 h-24 rounded-2xl bg-background/50 glass border border-primary/20 flex items-center justify-center mx-auto mb-6 relative z-10 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_20px_rgba(124,58,237,0.2)]">
+                  <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Brain className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">2. Analyze</h3>
+                <p className="text-muted-foreground">
+                  Our AI engine extracts text, entities, and insights, creating a knowledge base.
+                </p>
+              </div>
+
+              <div className="relative text-center group">
+                <div className="w-24 h-24 rounded-2xl bg-background/50 glass border border-primary/20 flex items-center justify-center mx-auto mb-6 relative z-10 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_20px_rgba(124,58,237,0.2)]">
+                  <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <MessageSquare className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">3. Interact</h3>
+                <p className="text-muted-foreground">
+                  Chat with your documents, ask questions, and get cited answers immediately.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Security Section */}
+        <section className="py-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary/5 -skew-y-3 transform origin-left scale-110" />
+
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+                  <Shield className="w-4 h-4" />
+                  <span>Enterprise Grade</span>
+                </div>
+                <h2 className="text-4xl font-bold mb-6 tracking-tight">
+                  Security You Can Trust
+                </h2>
+                <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+                  Your documents are protected with industry-leading security measures.
+                  We prioritize your data privacy with state-of-the-art encryption.
+                </p>
+
                 <div className="space-y-4">
                   {[
                     "End-to-end encryption for all documents",
                     "Role-based access control (RBAC)",
-                    "Secure authentication with multiple providers",
-                    "Comprehensive audit logging"
+                    "Secure authentication with Passport.js",
+                    "Comprehensive audit logging & tracking"
                   ].map((item, index) => (
                     <div key={index} className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Shield className="w-3.5 h-3.5 text-primary" />
-                      </div>
-                      <span className="text-sm">{item}</span>
+                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                      <span className="text-foreground">{item}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="lg:pl-8">
-                <Card className="p-8 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
+                <Card className="glass-card p-8 border-primary/20 relative z-10">
                   <div className="text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
-                      <Shield className="w-8 h-8 text-primary" />
+                    <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-[0_0_20px_rgba(124,58,237,0.2)]">
+                      <Shield className="w-10 h-10 text-primary" />
                     </div>
-                    <h3 className="text-xl font-medium mb-3">Secure by Design</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      Built with security-first architecture to protect your most sensitive documents
+                    <h3 className="text-2xl font-semibold mb-3">Secure by Design</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Built with a security-first architecture to protect your most sensitive data attributes.
                     </p>
                   </div>
                 </Card>
@@ -166,34 +279,94 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-20 bg-muted/30">
-          <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-semibold mb-4">
-              Ready to Get Started?
+        {/* About Section */}
+        <section id="about" className="py-24 relative">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <div className="order-2 lg:order-1 relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-purple-500/20 blur-3xl rounded-full transform -rotate-12" />
+                <div className="grid grid-cols-2 gap-4 relative z-10">
+                  <div className="space-y-4 pt-8">
+                    <div className="glass-card p-6 rounded-2xl border-primary/10">
+                      <Users className="w-8 h-8 text-primary mb-4" />
+                      <h4 className="font-semibold mb-1">User Focused</h4>
+                      <p className="text-sm text-muted-foreground">Built for intuitive document interaction.</p>
+                    </div>
+                    <div className="glass-card p-6 rounded-2xl border-primary/10">
+                      <Globe className="w-8 h-8 text-primary mb-4" />
+                      <h4 className="font-semibold mb-1">Global Scale</h4>
+                      <p className="text-sm text-muted-foreground">Processing documents in multiple languages.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="glass-card p-6 rounded-2xl border-primary/10">
+                      <Target className="w-8 h-8 text-primary mb-4" />
+                      <h4 className="font-semibold mb-1">Precision</h4>
+                      <p className="text-sm text-muted-foreground">99% accuracy in data extraction.</p>
+                    </div>
+                    <div className="glass-card p-6 rounded-2xl border-primary/10">
+                      <Lightbulb className="w-8 h-8 text-primary mb-4" />
+                      <h4 className="font-semibold mb-1">Innovation</h4>
+                      <p className="text-sm text-muted-foreground">Constantly evolving AI models.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="order-1 lg:order-2">
+                <h2 className="text-3xl font-bold mb-6 tracking-tight">About DocInsight</h2>
+                <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                  DocInsight was born from a simple mission: to make document intelligence accessible to everyone. We believe that valuable information shouldn't be locked away in static files.
+                </p>
+                <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+                  Our team of engineers and data scientists have built a platform that combines the latest in Computer Vision and Large Language Models to transform how organizations handle their data.
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="flex -space-x-4">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="w-10 h-10 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs font-medium">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">Trusted by teams</span> around the world
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-24 relative">
+          <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center relative z-10">
+            <h2 className="text-4xl font-bold mb-6 tracking-tight">
+              Ready to Transform Your Workflow?
             </h2>
-            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join thousands of professionals who trust DocuMind for their document processing needs.
+            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
+              Join thousands of professionals who save hours every week with Docinsight's intelligent features.
             </p>
-            <a href="/api/login">
-              <Button size="lg" data-testid="button-start-free">
-                Start Processing Documents
+            <Link href="/auth">
+              <Button size="lg" className="h-14 px-10 text-lg bg-primary hover:bg-primary/90 shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all hover:scale-105">
+                Get Started Now
               </Button>
-            </a>
+            </Link>
           </div>
         </section>
       </main>
 
-      <footer className="border-t py-12">
+      <footer className="border-t border-border/40 py-12 bg-background/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <FileText className="w-4 h-4 text-primary-foreground" />
+              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/20">
+                <FileText className="w-4 h-4 text-primary" />
               </div>
-              <span className="font-medium">DocuMind</span>
+              <span className="font-semibold text-lg">Docinsight</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Intelligent Document Processing System
+              © 2024 Docinsight. Intelligent Document Processing System.
             </p>
           </div>
         </div>

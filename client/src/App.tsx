@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import Landing from "@/pages/landing";
+import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Upload from "@/pages/upload";
 import Documents from "@/pages/documents";
@@ -69,7 +70,8 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
-        <Route component={Landing} />
+        <Route path="/auth" component={AuthPage} />
+        <Route component={AuthPage} />
       </Switch>
     );
   }
@@ -92,7 +94,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="documind-theme">
+      <ThemeProvider defaultTheme="light" storageKey="docinsight-theme">
         <TooltipProvider>
           <Toaster />
           <Router />

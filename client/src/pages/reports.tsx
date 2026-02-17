@@ -2,21 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Chart as ChartJS, 
-  CategoryScale, 
-  LinearScale, 
-  BarElement, 
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
   LineElement,
   PointElement,
   ArcElement,
-  Title, 
-  Tooltip, 
-  Legend 
+  Title,
+  Tooltip,
+  Legend
 } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { 
-  FileText, 
+import {
+  FileText,
   Brain,
   TrendingUp,
   FileDown
@@ -37,14 +37,14 @@ ChartJS.register(
   Legend
 );
 
-function StatCard({ 
-  title, 
-  value, 
+function StatCard({
+  title,
+  value,
   icon: Icon,
-  loading 
-}: { 
-  title: string; 
-  value: number | string; 
+  loading
+}: {
+  title: string;
+  value: number | string;
   icon: React.ComponentType<{ className?: string }>;
   loading?: boolean;
 }) {
@@ -75,10 +75,10 @@ export default function Reports() {
   });
 
   const charts = {
-    documentsOverTime: useRef<ChartJS>(null),
-    entityDistribution: useRef<ChartJS>(null),
-    topKeywords: useRef<ChartJS>(null),
-    statusDistribution: useRef<ChartJS>(null),
+    documentsOverTime: useRef<any>(null),
+    entityDistribution: useRef<any>(null),
+    topKeywords: useRef<any>(null),
+    statusDistribution: useRef<any>(null),
   }
 
   const documentsOverTimeData = {
@@ -144,7 +144,7 @@ export default function Reports() {
       },
     },
   });
-  
+
   const handleExport = (format: 'pdf' | 'word') => {
     if (!reports) return;
 

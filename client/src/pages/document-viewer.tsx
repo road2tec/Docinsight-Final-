@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
+import {
   ArrowLeft,
   FileText,
   Clock,
@@ -29,6 +29,10 @@ import {
   Calendar,
   Banknote,
   RefreshCw,
+  Lightbulb,
+  TrendingUp,
+  TrendingDown,
+  FileCheck,
 } from "lucide-react";
 import type { Document, Extraction, DocumentAnalysis, ExtractedEntity, ExtractedTable } from "@shared/mongo-schema";
 import { format } from "date-fns";
@@ -125,7 +129,7 @@ export default function DocumentViewer() {
 
   const analysisExtraction = document?.extractions?.find(e => e.extractionType === "analysis");
   const analysis = analysisExtraction?.data as DocumentAnalysis | undefined;
-  
+
   const tableExtraction = document?.extractions?.find(e => e.extractionType === "tables");
   const tables = (tableExtraction?.data as ExtractedTable[] | undefined) || analysis?.tables || [];
 
@@ -189,22 +193,22 @@ export default function DocumentViewer() {
               {getStatusBadge(document.status)}
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              {formatFileSize(document.fileSize)} 
+              {formatFileSize(document.fileSize)}
               {document.pageCount && ` • ${document.pageCount} pages`}
               {document.uploadDate && ` • Uploaded ${format(new Date(document.uploadDate), "MMM d, yyyy")}`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => reprocessMutation.mutate()}
             disabled={reprocessMutation.isPending || document.status === "processing"}
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${reprocessMutation.isPending ? "animate-spin" : ""}`} />
             Reprocess
           </Button>
-          <Link href={`/chat?document=${document.id}`}>
+          <Link href={`/chat?document=${(document as any)._id}`}>
             <Button variant="outline" data-testid="button-ask-questions">
               <MessageSquare className="w-4 h-4 mr-2" />
               Ask Questions
@@ -219,19 +223,19 @@ export default function DocumentViewer() {
             <Tabs defaultValue="text" className="w-full">
               <div className="border-b px-6 pt-4">
                 <TabsList className="bg-transparent p-0 h-auto gap-4">
-                  <TabsTrigger 
-                    value="text" 
+                  <TabsTrigger
+                    value="text"
                     className="data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-primary rounded-none pb-3"
                   >
                     Extracted Text
                   </TabsTrigger>
-                  <TabsTrigger 
+                  <TabsTrigger
                     value="entities"
                     className="data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-primary rounded-none pb-3"
                   >
                     Entities
                   </TabsTrigger>
-                  <TabsTrigger 
+                  <TabsTrigger
                     value="tables"
                     className="data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-primary rounded-none pb-3"
                   >
@@ -239,7 +243,7 @@ export default function DocumentViewer() {
                   </TabsTrigger>
                 </TabsList>
               </div>
-              
+
               <TabsContent value="text" className="mt-0">
                 <ScrollArea className="h-[500px] p-6">
                   {document.status === "processing" ? (
@@ -248,7 +252,7 @@ export default function DocumentViewer() {
                       <p className="text-muted-foreground">Processing document...</p>
                     </div>
                   ) : document.extractedText ? (
-                    <div 
+                    <div
                       className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-mono text-sm leading-relaxed"
                       data-testid="text-extracted-content"
                     >
@@ -283,7 +287,7 @@ export default function DocumentViewer() {
                       ].map(({ key, label, icon }) => {
                         const items = analysis.entities[key as keyof typeof analysis.entities] || [];
                         if (!Array.isArray(items) || items.length === 0) return null;
-                        
+
                         return (
                           <div key={key}>
                             <h4 className="text-sm font-medium capitalize mb-2 flex items-center gap-2">
@@ -292,8 +296,8 @@ export default function DocumentViewer() {
                             </h4>
                             <div className="flex flex-wrap gap-2">
                               {items.map((text: string, index: number) => (
-                                <Badge 
-                                  key={index} 
+                                <Badge
+                                  key={index}
                                   variant="secondary"
                                   className={EntityBadgeColor(icon)}
                                 >
@@ -349,7 +353,7 @@ export default function DocumentViewer() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  {table.headers.map((header, i) => (
+                                  {table.headers.map((header: string, i: number) => (
                                     <TableHead key={i} className="font-medium">
                                       {header}
                                     </TableHead>
@@ -357,9 +361,9 @@ export default function DocumentViewer() {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {table.rows.map((row, rowIndex) => (
+                                {table.rows.map((row: string[], rowIndex: number) => (
                                   <TableRow key={rowIndex}>
-                                    {row.map((cell, cellIndex) => (
+                                    {row.map((cell: string, cellIndex: number) => (
                                       <TableCell key={cellIndex}>{cell}</TableCell>
                                     ))}
                                   </TableRow>
@@ -376,6 +380,106 @@ export default function DocumentViewer() {
                       <p className="text-muted-foreground">No tables found in this document</p>
                       <p className="text-xs text-muted-foreground mt-2">
                         Try uploading a document with tabular data or structured information
+                      </p>
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="insights" className="mt-0">
+                <ScrollArea className="h-[500px] p-6">
+                  {document.status === "processing" ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+                      <p className="text-muted-foreground">Processing document...</p>
+                    </div>
+                  ) : analysis?.structuredData ? (
+                    <div className="space-y-6">
+                      {/* Document Type Badge */}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="px-3 py-1 text-sm bg-primary/5 border-primary/20 text-primary">
+                          <FileCheck className="w-3 h-3 mr-2" />
+                          {analysis.structuredData.documentType || "Analyzed Document"}
+                        </Badge>
+                      </div>
+
+                      {/* Insights List */}
+                      {analysis.structuredData.insights && analysis.structuredData.insights.length > 0 && (
+                        <div className="bg-muted/30 p-4 rounded-lg border">
+                          <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                            <Lightbulb className="w-4 h-4 text-amber-500" />
+                            Key Insights
+                          </h4>
+                          <ul className="space-y-2">
+                            {analysis.structuredData.insights.map((insight: string, i: number) => (
+                              <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                                <span className="text-primary">•</span>
+                                {insight}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Weak/Strong Areas for Marksheets */}
+                      {(analysis.structuredData.fields?.["Strong Areas"] || analysis.structuredData.fields?.["Weak Areas"]) && (
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          {analysis.structuredData.fields?.["Strong Areas"] && (
+                            <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/10">
+                              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-green-700 dark:text-green-400">
+                                <TrendingUp className="w-4 h-4" />
+                                Strong Areas
+                              </h4>
+                              <p className="text-sm text-muted-foreground">
+                                {Array.isArray(analysis.structuredData.fields["Strong Areas"])
+                                  ? analysis.structuredData.fields["Strong Areas"].join(", ")
+                                  : analysis.structuredData.fields["Strong Areas"]}
+                              </p>
+                            </div>
+                          )}
+                          {analysis.structuredData.fields?.["Weak Areas"] && (
+                            <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/10">
+                              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-red-700 dark:text-red-400">
+                                <TrendingDown className="w-4 h-4" />
+                                Areas for Improvement
+                              </h4>
+                              <p className="text-sm text-muted-foreground">
+                                {Array.isArray(analysis.structuredData.fields["Weak Areas"])
+                                  ? analysis.structuredData.fields["Weak Areas"].join(", ")
+                                  : analysis.structuredData.fields["Weak Areas"]}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Data Fields */}
+                      {analysis.structuredData.fields && Object.keys(analysis.structuredData.fields).length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-3">Extracted Data</h4>
+                          <div className="grid gap-2">
+                            {Object.entries(analysis.structuredData.fields).map(([key, value], i) => {
+                              if (key === "Strong Areas" || key === "Weak Areas") return null;
+                              // Skip complex objects/arrays in the simple list, handle specifically if needed
+                              if (typeof value === 'object' && value !== null) return null;
+
+                              return (
+                                <div key={i} className="flex justify-between items-center py-2 border-b last:border-0 border-border/50">
+                                  <span className="text-sm text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                                  <span className="text-sm font-medium">{String(value)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Lightbulb className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">No specific insights available</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        AI analysis did not detect structured data for this document
                       </p>
                     </div>
                   )}

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const UserSchema = z.object({
   _id: z.string(),
+  username: z.string(),
+  password: z.string(),
   email: z.string().optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
@@ -9,6 +11,14 @@ export const UserSchema = z.object({
   role: z.string().default("user"),
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date()),
+});
+
+export const InsertUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
 });
 
 export const DocumentSchema = z.object({
@@ -24,6 +34,7 @@ export const DocumentSchema = z.object({
   pageCount: z.number().optional(),
   metadata: z.any().optional(),
   processingProgress: z.number().optional(),
+  statusMessage: z.string().optional(),
   extractedText: z.string().optional(),
 });
 
@@ -55,6 +66,7 @@ export const ChatMessageSchema = z.object({
 });
 
 export type User = z.infer<typeof UserSchema>;
+export type InsertUser = z.infer<typeof InsertUserSchema>;
 export type Document = z.infer<typeof DocumentSchema>;
 export type Page = z.infer<typeof PageSchema>;
 export type Extraction = z.infer<typeof ExtractionSchema>;
@@ -82,6 +94,7 @@ export interface DocumentAnalysis {
     avgWordsPerSentence: number;
     readingTime: number;
   };
+  structuredData?: any;
 }
 
 // Entity extraction types

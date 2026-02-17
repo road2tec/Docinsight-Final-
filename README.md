@@ -1,4 +1,4 @@
-# DocuMind — Intelligent Document Processing Pipeline
+# Docinsight — Intelligent Document Processing Pipeline
 
 A full-stack proof-of-concept for ingesting PDFs, extracting text, performing NLP (entities, keywords, tables), and enabling question-answering over documents using an LLM (Google Gemini) with a React client and a TypeScript + Express server.
 
@@ -24,7 +24,7 @@ A full-stack proof-of-concept for ingesting PDFs, extracting text, performing NL
 
 **Overview**
 
-DocuMind (Intelligent Document Processing Pipeline) lets users upload PDF documents, extracts text (and pages), runs NLP to extract entities, keywords and tables, stores structured extractions, and surfaces a chat interface to ask questions about the document (LLM-backed with fallback search). The UI provides document listing, a document viewer (extracted text, entities, tables), reports, and export options.
+Docinsight (Intelligent Document Processing Pipeline) lets users upload PDF documents, extracts text (and pages), runs NLP to extract entities, keywords and tables, stores structured extractions, and surfaces a chat interface to ask questions about the document (LLM-backed with fallback search). The UI provides document listing, a document viewer (extracted text, entities, tables), reports, and export options.
 
 
 **Features**

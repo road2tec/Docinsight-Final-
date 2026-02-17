@@ -85,5 +85,6 @@ app.use((req, res, next) => {
   // ENOTSUP errors on macOS / some environments.
   httpServer.listen(port, () => {
     log(`serving on port ${port}`);
+    log(`App is running at http://localhost:${port}`);
   });
 })();

@@ -1,5 +1,8 @@
-import nlp from "compromise";
 import type { ExtractedEntity, ExtractedTable } from "@shared/mongo-schema";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const nlp = require("compromise");
 
 export function extractEntities(text: string): ExtractedEntity[] {
   const doc = nlp(text);
@@ -59,8 +62,8 @@ export function extractEntities(text: string): ExtractedEntity[] {
 
   try {
     // Extract dates - check if dates() method exists
-    if (typeof doc.dates === 'function') {
-      doc.dates().forEach((date: any) => {
+    if (typeof (doc as any).dates === 'function') {
+      (doc as any).dates().forEach((date: any) => {
         const text = date.text().trim();
         if (text && !seen.has(text.toLowerCase())) {
           seen.add(text.toLowerCase());
@@ -78,8 +81,8 @@ export function extractEntities(text: string): ExtractedEntity[] {
 
   try {
     // Extract money/values - check if money() method exists
-    if (typeof doc.money === 'function') {
-      doc.money().forEach((money: any) => {
+    if (typeof (doc as any).money === 'function') {
+      (doc as any).money().forEach((money: any) => {
         const text = money.text().trim();
         if (text && !seen.has(text.toLowerCase())) {
           seen.add(text.toLowerCase());
@@ -178,20 +181,20 @@ export function extractKeywordsFromText(text: string): string[] {
 
 export function extractTablesFromText(text: string): ExtractedTable[] {
   const tables: ExtractedTable[] = [];
-  
+
   // Look for simple table-like patterns in text
   const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-  
-  console.log('[Table Extraction] Processing lines:', lines);
-  
+
+  // console.log('[Table Extraction] Processing lines:', lines);
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    
+
     // Check if line looks like a table row
     const hasTabs = (line.match(/\t/g) || []).length >= 1;
     const hasPipes = (line.match(/\|/g) || []).length >= 2;
     const hasMultipleSpaces = /\s{2,}/.test(line);
-    
+
     // Split by appropriate delimiter
     let cells: string[] = [];
     if (hasPipes) {
@@ -205,21 +208,21 @@ export function extractTablesFromText(text: string): ExtractedTable[] {
       cells = line.split(/\s+/).filter(Boolean);
     }
 
-    console.log(`[Table Extraction] Line ${i}: "${line}" -> ${cells.length} cells:`, cells);
+    // console.log(`[Table Extraction] Line ${i}: "${line}" -> ${cells.length} cells:`, cells);
 
     // If this line has multiple cells (3+ for header), check if next lines also have cells
     if (cells.length >= 3 && i + 1 < lines.length) {
-      console.log(`[Table Extraction] Potential table header found at line ${i}`);
+      // console.log(`[Table Extraction] Potential table header found at line ${i}`);
       const table: ExtractedTable = {
         headers: cells,
         rows: [],
         confidence: 0.7,
       };
-      
+
       // Look for data rows after the header
       for (let j = i + 1; j < lines.length; j++) {
         const nextLine = lines[j];
-        
+
         // Try all delimiters for row
         let rowCells: string[] = [];
         if (hasPipes) {
@@ -231,32 +234,32 @@ export function extractTablesFromText(text: string): ExtractedTable[] {
         } else {
           rowCells = nextLine.split(/\s+/).filter(Boolean);
         }
-        
-        console.log(`[Table Extraction] Checking row ${j}: "${nextLine}" -> ${rowCells.length} cells:`, rowCells);
-        
+
+        // console.log(`[Table Extraction] Checking row ${j}: "${nextLine}" -> ${rowCells.length} cells:`, rowCells);
+
         // Add row if it has at least 2 cells (to match table structure)
         if (rowCells.length >= 2) {
           table.rows.push(rowCells);
-          console.log(`[Table Extraction] Added row ${j} to table`);
+          // console.log(`[Table Extraction] Added row ${j} to table`);
         } else {
           // No more rows - end of table
-          console.log(`[Table Extraction] End of table at line ${j}`);
+          // console.log(`[Table Extraction] End of table at line ${j}`);
           break;
         }
       }
-      
+
       // Only add table if it has at least 1 data row
       if (table.rows.length > 0) {
-        console.log(`[Table Extraction] Table found with ${table.rows.length} rows`);
+        // console.log(`[Table Extraction] Table found with ${table.rows.length} rows`);
         tables.push(table);
         i += table.rows.length; // Skip processed lines
       } else {
-        console.log(`[Table Extraction] No data rows found, skipping table`);
+        // console.log(`[Table Extraction] No data rows found, skipping table`);
       }
     }
   }
 
-  console.log(`[Table Extraction] Total tables found: ${tables.length}`);
+  // console.log(`[Table Extraction] Total tables found: ${tables.length}`);
   return tables;
 }
 

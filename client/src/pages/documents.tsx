@@ -7,16 +7,23 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -24,9 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  FileText, 
-  Search, 
+import {
+  FileText,
+  Search,
   Upload,
   Clock,
   CheckCircle2,
@@ -35,24 +42,42 @@ import {
   Filter,
   MessageCircle,
   Trash2,
+  Eye,
+  Table as TableIcon,
+  Users,
+  Calendar,
+  Building,
+  MapPin,
 } from "lucide-react";
-import type { Document } from "@shared/mongo-schema";
+import type { Document, ExtractedEntity, ExtractedTable } from "@shared/mongo-schema";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function getStatusBadge(status: string) {
   switch (status) {
     case "completed":
-      return <Badge variant="secondary" className="bg-green-600/10 text-green-700 border-0">Completed</Badge>;
+      return (
+        <Badge variant="secondary" className="bg-green-500/10 text-green-400 border border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.1)]">
+          <CheckCircle2 className="w-3 h-3 mr-1" />
+          Completed
+        </Badge>
+      );
     case "processing":
       return (
-        <Badge variant="secondary" className="bg-blue-600/10 text-blue-700 border-0">
+        <Badge variant="secondary" className="bg-primary/10 text-primary border border-primary/20 shadow-[0_0_10px_rgba(124,58,237,0.1)]">
           <Loader2 className="w-3 h-3 mr-1 animate-spin" />
           Processing
         </Badge>
       );
     case "error":
-      return <Badge variant="destructive">Error</Badge>;
+      return (
+        <Badge variant="destructive" className="bg-red-500/10 text-red-400 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          Error
+        </Badge>
+      );
     default:
       return <Badge variant="secondary">Pending</Badge>;
   }
@@ -71,63 +96,242 @@ function getStatusIcon(status: string) {
   }
 }
 
-function DocumentRow({ doc, openDeleteDialog }: { doc: Document, openDeleteDialog: (doc: Document) => void }) {
+function DocumentAnalysisDialog({
+  documentId,
+  isOpen,
+  onClose
+}: {
+  documentId: string | null,
+  isOpen: boolean,
+  onClose: () => void
+}) {
+  const { data: analysis, isLoading } = useQuery<Document & { extractions: any[] }>({
+    queryKey: [`/api/documents/${documentId}/analysis`],
+    enabled: !!documentId && isOpen,
+  });
+
+  const getEntityIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'person': return <Users className="w-4 h-4" />;
+      case 'date': return <Calendar className="w-4 h-4" />;
+      case 'organization': return <Building className="w-4 h-4" />;
+      case 'location': return <MapPin className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  console.log('[DEBUG Frontend] Analysis Data received:', analysis);
+  console.log('[DEBUG Frontend] Extractions:', analysis?.extractions);
+
+  const entities = analysis?.extractions?.find(e => e.extractionType === 'entities')?.data as ExtractedEntity[] || [];
+  const tables = analysis?.extractions?.find(e => e.extractionType === 'tables')?.data as ExtractedTable[] || [];
+  const summary = analysis?.extractions?.find(e => e.extractionType === 'summary')?.data as string || "No summary available for this document.";
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Document Analysis</DialogTitle>
+          <DialogDescription>
+            View extracted entities, tables, and summary from {analysis?.originalName}
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <Tabs defaultValue="summary" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList>
+              <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="entities">Entities ({entities.length})</TabsTrigger>
+              <TabsTrigger value="tables">Tables ({tables.length})</TabsTrigger>
+            </TabsList>
+
+            <ScrollArea className="flex-1 mt-4">
+              <TabsContent value="summary" className="mt-0">
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <h3 className="font-medium mb-2 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
+                    Document Summary
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {summary}
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="entities" className="mt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {entities.length > 0 ? (
+                    entities.map((entity, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded border bg-card">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary">
+                          {getEntityIcon(entity.type)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{entity.text}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{entity.type}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                      No entities found in this document.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="tables" className="mt-0">
+                <div className="space-y-6">
+                  {tables.length > 0 ? (
+                    tables.map((table, i) => (
+                      <div key={i} className="border rounded-lg overflow-hidden">
+                        <div className="bg-muted p-2 text-xs font-medium text-muted-foreground border-b uppercase tracking-wider">
+                          Table {i + 1}
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-muted/50">
+                                {table.headers?.map((header, h) => (
+                                  <th key={h} className="text-left p-3 font-medium text-muted-foreground whitespace-nowrap">
+                                    {header}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {table.rows?.map((row, r) => (
+                                <tr key={r} className="hover:bg-muted/50">
+                                  {row.map((cell, c) => (
+                                    <td key={c} className="p-3 whitespace-nowrap">
+                                      {cell}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No tables found in this document.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </ScrollArea>
+          </Tabs>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DocumentRow({
+  doc,
+  openDeleteDialog,
+  onViewAnalysis
+}: {
+  doc: Document,
+  openDeleteDialog: (doc: Document) => void,
+  onViewAnalysis: (doc: Document) => void
+}) {
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
-  
+
   return (
     <Link href={`/documents/${(doc as any)._id}`} className="block">
       <div
         key={(doc as any)._id}
-        className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg bg-muted/50 transition-all hover:bg-muted cursor-pointer"
+        className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl bg-background/40 border border-transparent hover:border-primary/20 hover:bg-background/60 cursor-pointer transition-all group relative overflow-hidden"
         data-testid={`document-row-${(doc as any)._id}`}
       >
-        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <FileText className="w-6 h-6 text-primary" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform z-10 border border-primary/10">
+          <FileText className="w-6 h-6 text-primary drop-shadow-[0_0_8px_rgba(124,58,237,0.3)]" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium truncate mb-1">{doc.originalName}</p>
+
+        <div className="flex-1 min-w-0 z-10">
+          <p className="font-medium truncate mb-1 text-lg group-hover:text-primary transition-colors">{doc.originalName}</p>
           <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span>{formatFileSize(doc.fileSize)}</span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+              {formatFileSize(doc.fileSize)}
+            </span>
             {doc.pageCount && (
-              <span>{doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}</span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                {doc.pageCount} {doc.pageCount === 1 ? "page" : "pages"}
+              </span>
             )}
-            <span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
               {doc.uploadDate && format(new Date(doc.uploadDate), "MMM d, yyyy")}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0 w-full sm:w-auto">
+        <div className="flex items-center gap-3 flex-shrink-0 w-full sm:w-auto z-10">
           <div className="flex-1 sm:flex-none">
             {doc.status === 'processing' && doc.processingProgress ? (
-              <div className="flex items-center gap-2">
-                <Progress value={doc.processingProgress} className="w-24 h-2" />
-                <span className="text-xs text-muted-foreground">{doc.processingProgress}%</span>
+              <div className="flex flex-col gap-1 min-w-[120px]">
+                <div className="flex items-center gap-2">
+                  <Progress value={doc.processingProgress} className="w-24 h-2 bg-primary/20" />
+                  <span className="text-xs text-muted-foreground">{doc.processingProgress}%</span>
+                </div>
+                {doc.statusMessage && (
+                  <span className="text-[10px] text-primary/80 animate-pulse">
+                    {doc.statusMessage}
+                  </span>
+                )}
               </div>
             ) : getStatusBadge(doc.status)}
           </div>
           {getStatusIcon(doc.status)}
+
           {doc.status === 'completed' && (
-            <Link href={`/chat/${(doc as any)._id}`} onClick={(e) => e.stopPropagation()}>
-              <Button variant="outline" size="sm">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Chat
+            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-primary/10 hover:text-primary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onViewAnalysis(doc);
+                }}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View
               </Button>
-            </Link>
+              <Link href={`/chat/${(doc as any)._id}`} onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Chat
+                </Button>
+              </Link>
+            </div>
           )}
-          <Button 
+          <Button
             variant="ghost"
             size="icon"
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               openDeleteDialog(doc);
             }}
           >
-            <Trash2 className="w-4 h-4 text-destructive" />
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -140,6 +344,10 @@ export default function Documents() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
+
+  // Analysis Dialog State
+  const [analysisDocId, setAnalysisDocId] = useState<string | null>(null);
+  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -168,6 +376,11 @@ export default function Documents() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleViewAnalysis = (doc: Document) => {
+    setAnalysisDocId((doc as any)._id);
+    setIsAnalysisOpen(true);
+  };
+
   const handleDeleteConfirm = () => {
     if (documentToDelete) {
       deleteMutation.mutate((documentToDelete as any)._id);
@@ -181,38 +394,41 @@ export default function Documents() {
   }).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Decorative Background */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none -z-10" />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-documents-title">Documents</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold tracking-tight text-glow" data-testid="text-documents-title">Documents</h1>
+          <p className="text-muted-foreground mt-1 text-lg">
             Browse and manage your uploaded documents
           </p>
         </div>
         <Link href="/upload">
-          <Button data-testid="button-upload-document">
+          <Button data-testid="button-upload-document" className="bg-primary hover:bg-primary/90 shadow-[0_0_15px_rgba(124,58,237,0.3)] transition-all">
             <Upload className="w-4 h-4 mr-2" />
             Upload Document
           </Button>
         </Link>
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
+      <Card className="glass-card border-primary/10">
+        <CardHeader className="pb-4 border-b border-border/40">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <div className="relative flex-1 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               <Input
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-background/50 border-primary/10 focus:border-primary/50 transition-all"
                 data-testid="input-search-documents"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40" data-testid="select-status-filter">
-                <Filter className="w-4 h-4 mr-2" />
+              <SelectTrigger className="w-full sm:w-40 bg-background/50 border-primary/10 focus:border-primary/50" data-testid="select-status-filter">
+                <Filter className="w-4 h-4 mr-2 text-primary" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -225,11 +441,11 @@ export default function Documents() {
             </Select>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 animate-pulse">
                   <Skeleton className="w-12 h-12 rounded-lg" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-5 w-64" />
@@ -242,21 +458,26 @@ export default function Documents() {
           ) : filteredDocuments && filteredDocuments.length > 0 ? (
             <div className="space-y-3">
               {filteredDocuments.map((doc) => (
-                <DocumentRow key={doc.id} doc={doc} openDeleteDialog={openDeleteDialog} />
+                <DocumentRow
+                  key={doc._id}
+                  doc={doc}
+                  openDeleteDialog={openDeleteDialog}
+                  onViewAnalysis={handleViewAnalysis}
+                />
               ))}
             </div>
           ) : (
             <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-8 h-8 text-muted-foreground" />
+              <div className="w-20 h-20 rounded-2xl bg-muted/30 flex items-center justify-center mx-auto mb-6 border border-border shadow-[0_0_15px_rgba(0,0,0,0.1)]">
+                <FileText className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="font-medium mb-2">
-                {searchQuery || statusFilter !== "all" 
-                  ? "No documents found" 
+              <h3 className="text-xl font-medium mb-2">
+                {searchQuery || statusFilter !== "all"
+                  ? "No documents found"
                   : "No documents yet"
                 }
               </h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                 {searchQuery || statusFilter !== "all"
                   ? "Try adjusting your search or filter criteria"
                   : "Upload your first PDF to start extracting text and analyzing content"
@@ -264,8 +485,8 @@ export default function Documents() {
               </p>
               {!searchQuery && statusFilter === "all" && (
                 <Link href="/upload">
-                  <Button size="sm">
-                    <Upload className="w-4 h-4 mr-2" />
+                  <Button size="lg" className="bg-primary hover:bg-primary/90 shadow-lg">
+                    <Upload className="w-5 h-5 mr-2" />
                     Upload Document
                   </Button>
                 </Link>
@@ -276,26 +497,31 @@ export default function Documents() {
       </Card>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="glass-card border-red-500/20">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle className="text-red-400">Delete Document?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the document
-              and all associated data.
+              This action cannot be undone. This will permanently delete <span className="font-medium text-foreground">"{documentToDelete?.originalName}"</span> and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel className="border-primary/20 hover:bg-primary/10">Cancel</AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={deleteMutation.isPending}
-              className="bg-destructive hover:bg-destructive/90"
+              className="bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
             >
               {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DocumentAnalysisDialog
+        documentId={analysisDocId}
+        isOpen={isAnalysisOpen}
+        onClose={() => setIsAnalysisOpen(false)}
+      />
     </div>
   );
 }

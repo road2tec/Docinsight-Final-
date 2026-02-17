@@ -4,17 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  FileText, 
-  Upload, 
-  Clock, 
-  CheckCircle2, 
+import {
+  FileText,
+  Upload,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   ArrowRight,
   TrendingUp,
   Brain,
   MessageSquare,
   Loader2,
+  Sparkles
 } from "lucide-react";
 import type { Document } from "@shared/mongo-schema";
 import { format } from "date-fns";
@@ -27,59 +28,70 @@ interface DashboardStats {
   recentDocuments: Document[];
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  icon: Icon, 
+function StatCard({
+  title,
+  value,
+  icon: Icon,
   trend,
-  loading 
-}: { 
-  title: string; 
-  value: number | string; 
+  loading,
+  className
+}: {
+  title: string;
+  value: number | string;
   icon: React.ComponentType<{ className?: string }>;
   trend?: string;
   loading?: boolean;
+  className?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground font-medium mb-1">{title}</p>
-            {loading ? (
-              <Skeleton className="h-9 w-20" />
-            ) : (
-              <p className="text-3xl font-bold">{value}</p>
-            )}
-            {trend && (
-              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-chart-2" />
-                {trend}
-              </p>
-            )}
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Icon className="w-6 h-6 text-primary" />
-          </div>
+    <div className={`glass-card rounded-xl p-6 relative overflow-hidden group ${className}`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="relative z-10 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground font-medium mb-1">{title}</p>
+          {loading ? (
+            <Skeleton className="h-9 w-20" />
+          ) : (
+            <p className="text-3xl font-bold text-foreground">{value}</p>
+          )}
+          {trend && (
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <TrendingUp className="w-3 h-3 text-chart-2" />
+              {trend}
+            </p>
+          )}
         </div>
-      </CardContent>
-    </Card>
+        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+          <Icon className="w-6 h-6 text-primary drop-shadow-[0_0_8px_rgba(124,58,237,0.5)]" />
+        </div>
+      </div>
+    </div>
   );
 }
 
 function getStatusBadge(status: string) {
   switch (status) {
     case "completed":
-      return <Badge variant="secondary" className="bg-chart-2/10 text-chart-2 border-0">Completed</Badge>;
+      return (
+        <Badge variant="secondary" className="bg-green-500/10 text-green-400 border border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.1)]">
+          <CheckCircle2 className="w-3 h-3 mr-1" />
+          Completed
+        </Badge>
+      );
     case "processing":
       return (
-        <Badge variant="secondary" className="bg-chart-4/10 text-chart-4 border-0">
+        <Badge variant="secondary" className="bg-primary/10 text-primary border border-primary/20 shadow-[0_0_10px_rgba(124,58,237,0.1)]">
           <Loader2 className="w-3 h-3 mr-1 animate-spin" />
           Processing
         </Badge>
       );
     case "error":
-      return <Badge variant="destructive">Error</Badge>;
+      return (
+        <Badge variant="destructive" className="bg-red-500/10 text-red-400 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          Error
+        </Badge>
+      );
     default:
       return <Badge variant="secondary">Pending</Badge>;
   }
@@ -91,16 +103,19 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Decorative Background */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none -z-10" />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-dashboard-title">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Monitor your document processing activity
+          <h1 className="text-3xl font-bold tracking-tight text-glow" data-testid="text-dashboard-title">Dashboard</h1>
+          <p className="text-muted-foreground mt-1 text-lg">
+            Overview of your document intelligence
           </p>
         </div>
         <Link href="/upload">
-          <Button data-testid="button-upload-new">
+          <Button data-testid="button-upload-new" className="bg-primary hover:bg-primary/90 shadow-[0_0_15px_rgba(124,58,237,0.3)] transition-all">
             <Upload className="w-4 h-4 mr-2" />
             Upload Document
           </Button>
@@ -135,97 +150,108 @@ export default function Dashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
-            <CardTitle className="text-lg font-medium">Recent Documents</CardTitle>
+        <div className="lg:col-span-2 glass-card rounded-xl p-6 border-primary/10">
+          <div className="flex flex-row items-center justify-between gap-4 pb-4 border-b border-border/40 mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold">Recent Activity</h2>
+            </div>
             <Link href="/documents">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">
                 View All
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-                    <Skeleton className="w-10 h-10 rounded-lg" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                    <Skeleton className="h-6 w-20" />
-                  </div>
-                ))}
-              </div>
-            ) : stats?.recentDocuments && stats.recentDocuments.length > 0 ? (
-              <div className="space-y-3">
-                {stats.recentDocuments.map((doc) => (
-                  <Link key={doc.id} href={`/documents/${doc.id}`}>
-                    <div 
-                      className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 hover-elevate cursor-pointer transition-all"
-                      data-testid={`document-card-${doc.id}`}
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{doc.originalName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {doc.uploadDate && format(new Date(doc.uploadDate), "MMM d, yyyy 'at' h:mm a")}
-                        </p>
-                      </div>
-                      {getStatusBadge(doc.status)}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                  <FileText className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="font-medium mb-2">No documents yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Upload your first PDF to get started
-                </p>
-                <Link href="/upload">
-                  <Button size="sm">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Document
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-medium">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                  <Skeleton className="w-10 h-10 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-6 w-20" />
+                </div>
+              ))}
+            </div>
+          ) : stats?.recentDocuments && stats.recentDocuments.length > 0 ? (
+            <div className="space-y-3">
+              {stats.recentDocuments.map((doc) => (
+                <Link key={doc._id} href={`/documents/${doc._id}`}>
+                  <div
+                    className="flex items-center gap-4 p-4 rounded-lg bg-background/40 hover:bg-background/60 border border-transparent hover:border-primary/20 cursor-pointer transition-all group"
+                    data-testid={`document-card-${doc._id}`}
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate group-hover:text-primary transition-colors">{doc.originalName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {doc.uploadDate && format(new Date(doc.uploadDate), "MMM d, yyyy 'at' h:mm a")}
+                      </p>
+                    </div>
+                    {getStatusBadge(doc.status)}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4 border border-border">
+                <FileText className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium mb-2">No documents yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload your first PDF to get started with AI analysis
+              </p>
+              <Link href="/upload">
+                <Button size="sm" className="bg-primary/90 hover:bg-primary">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Document
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <div className="glass-card rounded-xl p-6 border-primary/10 h-fit">
+          <div className="pb-4 border-b border-border/40 mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold">Quick Actions</h2>
+            </div>
+          </div>
+          <div className="space-y-3">
             <Link href="/upload">
-              <Button variant="outline" className="w-full justify-start" data-testid="quick-action-upload">
-                <Upload className="w-4 h-4 mr-3" />
+              <Button variant="outline" className="w-full justify-start h-12 hover:bg-primary/5 hover:border-primary/30 transition-all" data-testid="quick-action-upload">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                  <Upload className="w-4 h-4 text-primary" />
+                </div>
                 Upload New Document
               </Button>
             </Link>
             <Link href="/documents">
-              <Button variant="outline" className="w-full justify-start" data-testid="quick-action-chat">
-                <MessageSquare className="w-4 h-4 mr-3" />
+              <Button variant="outline" className="w-full justify-start h-12 hover:bg-primary/5 hover:border-primary/30 transition-all" data-testid="quick-action-chat">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                </div>
                 Ask Questions
               </Button>
             </Link>
             <Link href="/reports">
-              <Button variant="outline" className="w-full justify-start" data-testid="quick-action-reports">
-                <Brain className="w-4 h-4 mr-3" />
+              <Button variant="outline" className="w-full justify-start h-12 hover:bg-primary/5 hover:border-primary/30 transition-all" data-testid="quick-action-reports">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                  <Brain className="w-4 h-4 text-primary" />
+                </div>
                 View Reports
               </Button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
